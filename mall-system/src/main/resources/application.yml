@@ -1,0 +1,123 @@
+server:
+  # 应用服务监听端口
+  port: 8080
+
+spring:
+  datasource:
+    # 数据库连接池实现 (Druid: 具备强大的监控和扩展性)
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      # JDBC 驱动类 (MySQL 8.x 推荐使用 com.mysql.cj.jdbc.Driver)
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      # JDBC 连接字符串
+      # 参数说明：开启 Unicode、UTF-8 编码、禁用 SSL(开发环境)、指定上海时区、允许公钥检索
+      url: jdbc:mysql://192.168.112.100:3306/j_mall?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      # 数据库凭证
+      username: root
+      password: root
+
+      # --- 连接池性能参数 (并发核心配置) ---
+      # 初始化时建立的物理连接数
+      initial-size: 0
+      # 最小维持的空闲连接数 (即使没流量也保持这些连接)
+      min-idle: 5
+      # 最大活跃连接数 (决定系统的并发上限，生产环境建议配合 CPU 核心数调整，如 50-200)
+      max-active: 20
+      # 获取连接的最大等待时间 (超时抛出异常，单位：毫秒)
+      max-wait: 60000
+
+      # --- 连接保活与检测 ---
+      # 检测连接是否有效的 SQL (MySQL极其高效的检测语句)
+      validation-query: SELECT 1
+      # 申请连接时是否检测 (关闭以提升性能，仅在连接失效时依赖下面的配置)
+      test-on-borrow: false
+      # 归还连接时是否检测 (关闭以提升性能)
+      test-on-return: false
+      # 空闲时是否检测 (建议开启，确保连接池中的空闲连接是可用的)
+      test-while-idle: true
+
+      # 销毁线程的运行间隔 (检测空闲连接、废弃连接，单位：毫秒)
+      time-between-eviction-runs-millis: 60000
+      # 连接在池中的最小生存时间 (防止连接频繁创建销毁，单位：毫秒)
+      min-evictable-idle-time-millis: 300000
+
+  data:
+    redis:
+      # Redis 服务端地址与端口
+      host: 192.168.112.100
+      port: 6379
+      # 选用的数据库索引 (0-15)
+      database: 0
+      # 建立连接的超时时间
+      timeout: 3000ms
+
+      # Lettuce 客户端配置 (基于 Netty 的非阻塞客户端)
+      lettuce:
+        pool:
+          # 最大活跃连接数 (负数表示无限制，高并发场景需限制以防 OOM)
+          max-active: 20
+          # 获取连接的最大阻塞等待时间 (负数表示无限等待)
+          max-wait: -1ms
+          # 最大空闲连接数 (高并发下可适当调大以缓冲波峰)
+          max-idle: 8
+          # 最小空闲连接数
+          min-idle: 0
+
+  elasticsearch:
+    # ElasticSearch 服务端地址与端口
+    uris: http://192.168.112.100:9200
+
+
+mybatis-plus:
+  # Mapper XML 映射文件路径 (classpath* 支持扫描 jar 包内的 XML)
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 实体类别名扫描包 (XML 中可直接写类名而非全限定名)
+  type-aliases-package: com.nshj.mall.**.entity
+
+  configuration:
+    # SQL 执行日志输出 (StdOutImpl 仅用于开发调试，生产环境请移除或改为 Slf4jImpl)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 自动开启驼峰命名转换 (table_field -> tableField)
+    map-underscore-to-camel-case: true
+
+  global-config:
+    db-config:
+      # 主键生成策略 (AUTO: 依赖数据库自增列)
+      id-type: auto
+      # 全局逻辑删除配置 (1=已删除, 0=正常)
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+springdoc:
+  api-docs:
+    # 启用 OpenAPI 3.0 接口文档生成
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    # 启用 Swagger UI 可视化控制台
+    enabled: true
+    path: /swagger-ui.html
+
+mall:
+  jwt:
+    # JWT 签名密钥 (生产环境严禁明文配置，建议通过 Environment Variables 注入)
+    secret: nshj_mall_security_secret_key_must_be_very_long
+    # Token 有效期 (单位：毫秒，此处配置为 24 小时)
+    expiration: 86400000
+    # 令牌签发者标识
+    issuer: JMall-System
+    # Token 前缀 (注意：双引号包裹以保留末尾空格，符合 RFC 6750 标准)
+    prefix: "Bearer "
+
+rocketmq:
+  # NameServer 地址列表 (集群模式用分号分隔)
+  name-server: 192.168.112.100:9876
+
+  producer:
+    # 生产者组名 (事务消息核心标识，同一组内的生产者实例行为必须一致)
+    group: mall-backend-producer-group
+    # 消息发送超时时间 (单位：毫秒)
+    send-message-timeout: 3000
+    # 同步发送失败后的内部重试次数
+    retry-times-when-send-failed: 2

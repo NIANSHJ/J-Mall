@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nshj.mall.mapper.SysMenuMapper">
+
+    <resultMap id="BaseResultMap" type="com.nshj.mall.entity.SysMenu">
+        <id column="id" property="id"/>
+
+        <result column="parent_id" property="parentId"/>
+        <result column="menu_name" property="menuName"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="perms" property="perms"/>
+
+        <result column="api_path" property="apiPath"/>
+        <result column="request_method" property="requestMethod"/>
+
+        <result column="status" property="status"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectPermsByUserId" resultType="java.lang.String">
+        SELECT DISTINCT m.perms
+        FROM sys_menu m
+        LEFT JOIN sys_role_menu rm ON m.id = rm.menu_id
+        LEFT JOIN sys_user_role ur ON rm.role_id = ur.role_id
+        LEFT JOIN sys_role r ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId}
+        AND m.status = 1
+        AND m.deleted = 0
+        AND r.status = 1
+        AND r.deleted = 0
+        AND m.perms IS NOT NULL
+        AND m.perms != ''
+    </select>
+
+    <select id="selectMenuRules" resultMap="BaseResultMap">
+        SELECT api_path, request_method, perms
+        FROM sys_menu
+        WHERE status = 1
+        AND deleted = 0
+        AND api_path IS NOT NULL
+        AND api_path != ''
+    </select>
+
+</mapper>
