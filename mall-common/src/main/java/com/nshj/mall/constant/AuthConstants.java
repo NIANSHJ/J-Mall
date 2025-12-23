@@ -13,10 +13,10 @@ public class AuthConstants {
     /**
      * 权限规则缓存有效期 (单位：小时)
      * <p>
-     * Redis 中存储的权限规则 TTL。设置为 1 小时，配合定时任务刷新，
+     * Redis 中存储的权限规则 TTL。设置为 24 小时，配合定时任务刷新，
      * 既保证了数据新鲜度，又防止了 Redis 内存长期占用。
      */
-    public static final int AUTH_EXPIRATION = 1;
+    public static final int AUTH_EXPIRATION = 24;
 
     /**
      * 权限自动刷新 Cron 表达式
@@ -25,6 +25,17 @@ public class AuthConstants {
      * <b>目的：</b> 作为 "最终一致性" 的兜底方案，修正因广播消息丢失或 Redis 逐出导致的数据不一致。
      */
     public static final String AUTH_FLUSH_CRON = "0 0 * * * ?";
+
+    /**
+     * 用户初始化/重置默认密码
+     * <p>
+     * <b>值：</b> "123456"
+     * <p>
+     * <b><font color="red">安全警告：</font></b>
+     * 1. 仅用于 <b>管理员创建新用户</b> 或 <b>重置密码</b> 时的临时凭证。
+     * 2. 系统应当实施 <b>"首次登录强制改密"</b> 策略，防止弱密码长期存在带来的被爆破风险。
+     */
+    public static final String DEFAULT_PASSWORD = "123456";
 
     /**
      * 私有构造器

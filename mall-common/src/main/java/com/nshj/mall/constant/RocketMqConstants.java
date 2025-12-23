@@ -28,7 +28,7 @@ public class RocketMqConstants {
      * 当 RBAC 权限（角色/菜单）发生变更时，生产端发送此消息，
      * 所有微服务节点消费消息并立即清理本地缓存 (Local Cache)，确保权限校验的数据一致性。
      */
-    public static final String TOPIC_SYS_BROADCAST = "sys-broadcast-topic:";
+    public static final String TOPIC_SYS_BROADCAST = "sys-broadcast-topic";
     public static final String TAG_AUTH = "auth";
 
     /**
@@ -42,6 +42,13 @@ public class RocketMqConstants {
      */
     public static final String TOPIC_MALL_LOG = "sys-log-topic";
     public static final String TAG_LOG_AUDIT = "audit";
+
+    /**
+     * Topic 与 Tag 的分隔符
+     * <p>
+     * <b>使用示例：</b> {@code rocketMQTemplate.convertAndSend(TOPIC + SEPARATOR + TAG, payload)}
+     */
+    public static final String TOPIC_TAG_SEPARATOR = ":";
 
     /**
      * 私有构造器

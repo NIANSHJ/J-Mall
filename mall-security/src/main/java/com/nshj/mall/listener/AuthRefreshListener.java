@@ -16,15 +16,16 @@ import org.springframework.stereotype.Component;
  * 确保集群中的每一个服务实例均能接收到通知，从而触发本地 JVM 缓存的重载与同步。
  *
  * @author nshj
- * @see DynamicAuthorizationManager#refreshRules()
+ * @see DynamicAuthorizationManager#refreshRules(boolean)
  * @since 1.0.0
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 @RocketMQMessageListener(
-        topic = RocketMqConstants.TOPIC_SYS_BROADCAST + RocketMqConstants.TAG_AUTH,
+        topic = RocketMqConstants.TOPIC_SYS_BROADCAST,
         consumerGroup = "auth-refresh-consumer-group",
+        selectorExpression = RocketMqConstants.TAG_AUTH,
         messageModel = MessageModel.BROADCASTING
 )
 public class AuthRefreshListener implements RocketMQListener<String> {
@@ -41,7 +42,7 @@ public class AuthRefreshListener implements RocketMQListener<String> {
         log.info("接收到权限变更广播 [{}]，正在执行本地缓存重载...", message);
 
         // 委托鉴权管理器重新加载权限规则 (DB -> Redis -> Local Cache)
-        authorizationManager.refreshRules();
+        authorizationManager.refreshRules(true);
 
         log.info("本地权限缓存重载完毕");
     }

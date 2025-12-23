@@ -3,6 +3,7 @@ package com.nshj.mall.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.nshj.mall.constant.AuthConstants;
 import com.nshj.mall.constant.RedisConstants;
 import com.nshj.mall.entity.SysUser;
 import com.nshj.mall.entity.SysUserRole;
@@ -107,7 +108,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 2. 凭证加固 (Credential Hardening)
         // 若前端未传密码，赋予默认初始密码，并进行 BCrypt 加盐哈希
-        String rawPassword = StringUtils.hasText(sysUser.getPassword()) ? sysUser.getPassword() : "123456";
+        String rawPassword = StringUtils.hasText(sysUser.getPassword()) ? sysUser.getPassword() : AuthConstants.DEFAULT_PASSWORD;
         sysUser.setPassword(passwordEncoder.encode(rawPassword));
         sysUser.setStatus(1); // 默认为激活状态
 

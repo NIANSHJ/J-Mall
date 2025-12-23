@@ -42,7 +42,7 @@ public class LogDispatchServiceImpl implements LogDispatchService {
                 .build();
 
         // 执行异步发送
-        rocketMQTemplate.asyncSend(RocketMqConstants.TOPIC_MALL_LOG + ":" + RocketMqConstants.TAG_LOG_AUDIT,
+        rocketMQTemplate.asyncSend(RocketMqConstants.TOPIC_MALL_LOG + RocketMqConstants.TOPIC_TAG_SEPARATOR + RocketMqConstants.TAG_LOG_AUDIT,
                 message,
                 new SendCallback() {
                     @Override

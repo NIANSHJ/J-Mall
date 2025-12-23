@@ -155,7 +155,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         // 步骤 B: 发送 RocketMQ 广播消息 (Payload 仅作为触发信号，具体内容不重要)
         // 订阅者收到消息后，应主动去 Redis 或 DB 拉取最新配置
         String signalPayload = "Refreshed at " + System.currentTimeMillis();
-        rocketMQTemplate.convertAndSend(RocketMqConstants.TOPIC_SYS_BROADCAST + RocketMqConstants.TAG_AUTH, signalPayload);
+        rocketMQTemplate.convertAndSend(RocketMqConstants.TOPIC_SYS_BROADCAST + RocketMqConstants.TOPIC_TAG_SEPARATOR + RocketMqConstants.TAG_AUTH, signalPayload);
     }
 
     /**
