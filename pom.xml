@@ -28,6 +28,7 @@
         <mysql.version>8.4.0</mysql.version>
         <druid.version>1.2.20</druid.version>
         <jjwt.version>0.13.0</jjwt.version>
+        <redisson.version>3.50.0</redisson.version>
         <common-pool.version>2.12.0</common-pool.version>
         <rocketmq.version>2.3.0</rocketmq.version>
         <skywalking.version>9.5.0</skywalking.version>
@@ -109,6 +110,11 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-data-redis</artifactId>
                 <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>

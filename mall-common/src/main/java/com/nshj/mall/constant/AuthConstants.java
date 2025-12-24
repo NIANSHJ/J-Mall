@@ -36,6 +36,24 @@ public class AuthConstants {
      * 2. 系统应当实施 <b>"首次登录强制改密"</b> 策略，防止弱密码长期存在带来的被爆破风险。
      */
     public static final String DEFAULT_PASSWORD = "123456";
+    
+    /**
+     * 复合键分隔符 (Composite Key Separator)
+     * <p>
+     * <b>作用：</b> 用于拼接 HTTP Method 与 URL Path，构建唯一的权限规则 Key。
+     * <br>
+     * <b>格式示例：</b> {@code POST:api/user/add}
+     */
+    public static final String KEY_SEPARATOR = ":";
+
+    /**
+     * 全动词通配符 (Universal Method Wildcard)
+     * <p>
+     * <b>业务语义：</b> 当数据库规则未指定具体 Request Method 时，使用此标识。
+     * <br>
+     * <b>匹配逻辑：</b> 标识该 URL 路径下的所有操作 (GET, POST, PUT, DELETE) 均适用同一套权限规则。
+     */
+    public static final String METHOD_ALL = "ALL";
 
     /**
      * 私有构造器

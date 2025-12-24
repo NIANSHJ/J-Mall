@@ -1,12 +1,18 @@
 package com.nshj.mall.utils;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Redis 缓存操作门面工具类 (Facade Pattern)
@@ -150,5 +156,29 @@ public class RedisCache {
      */
     public boolean expire(final String key, final long timeout, final TimeUnit unit) {
         return redisTemplate.expire(key, timeout, unit);
+    }
+
+    /**
+     * 通用管道批处理 (Pipeline Execution)
+     * <p>
+     * 利用 Redis Pipelining 技术，将多条命令打包成一次网络请求发送给服务器，并一次性接收所有结果。
+     * <br><b>性能优化：</b> 相比串行执行 {@code N} 次命令，Pipeline 只需 {@code 1} 次网络往返 (RTT)，在大量写操作场景下能显著提升吞吐量。
+     * <br><b>适用场景：</b> 缓存预热、组合命令操作 (如：先删 -> 再写 -> 后置过期)。
+     * <p>
+     * <b><font color="red">开发警示：</font></b>
+     * 在 {@code actionConsumer} 的 Lambda 表达式内部，所有 Redis 命令 (如 {@code opsForValue().get()}) <b>只会返回 null</b>，
+     * 因为命令仅被放入队列并未实际执行。若需获取返回值，请从本方法的返回结果 {@code List} 中按顺序读取。
+     *
+     * @param actionConsumer 函数式接口，用于定义具体的 Redis 操作逻辑
+     * @return 管道中每个命令的执行结果列表 (按执行顺序排列)
+     */
+    public List<Object> executePipeline(Consumer<RedisOperations<String, Object>> actionConsumer) {
+        return redisTemplate.executePipelined(new SessionCallback<>() {
+            @Override
+            public <K, V> Object execute(@NonNull RedisOperations<K, V> operations) throws DataAccessException {
+                actionConsumer.accept((RedisOperations<String, Object>) operations);
+                return null;
+            }
+        });
     }
 }

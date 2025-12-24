@@ -1,6 +1,7 @@
 package com.nshj.mall.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.nshj.mall.annotation.Auditable;
 import com.nshj.mall.entity.SysRole;
 import com.nshj.mall.response.Result;
 import com.nshj.mall.service.SysRoleService;
@@ -76,6 +77,7 @@ public class SysRoleController {
      */
     @Operation(summary = "新增角色", description = "创建新的身份定义")
     @PostMapping
+    @Auditable(module = "角色模块", action = "新增角色")
     public Result<Void> add(@RequestBody SysRole sysRole) {
         sysRoleService.addRole(sysRole);
         return Result.success();
@@ -91,8 +93,9 @@ public class SysRoleController {
      * @param sysRole 角色实体 (ID 必填)
      * @return 空响应
      */
-    @Operation(summary = "修改角色", description = "更新角色名称、权限字符或状态")
+    @Operation(summary = "修改角色", description = "修改角色名称、权限字符或状态")
     @PutMapping
+    @Auditable(module = "角色模块", action = "修改角色")
     public Result<Void> edit(@RequestBody SysRole sysRole) {
         sysRoleService.updateRole(sysRole);
         return Result.success();
@@ -110,6 +113,7 @@ public class SysRoleController {
      */
     @Operation(summary = "删除角色", description = "批量逻辑删除，需满足无关联用户约束")
     @DeleteMapping("/{roleIds}")
+    @Auditable(module = "角色模块", action = "删除角色")
     public Result<Void> remove(@PathVariable("roleIds") Long[] roleIds) {
         sysRoleService.removeRoleBatchByIds(Arrays.asList(roleIds));
         return Result.success();

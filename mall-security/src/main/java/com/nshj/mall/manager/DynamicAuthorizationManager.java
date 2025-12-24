@@ -9,6 +9,8 @@ import com.nshj.mall.utils.RedisCache;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
@@ -49,16 +51,7 @@ public class DynamicAuthorizationManager implements AuthorizationManager<Request
     private final RedisCache redisCache;
     private final SysMenuService sysMenuService;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
-
-    /**
-     * 复合键分隔符：用于拼接 HTTP Method 与 URL Path
-     */
-    private static final String KEY_SEPARATOR = ":";
-
-    /**
-     * 全动词匹配标识：当规则未指定 Method 时，默认为 ALL (匹配 GET, POST, PUT 等所有动词)
-     */
-    private static final String METHOD_ALL = "ALL";
+    private final RedissonClient redissonClient;
 
     /**
      * 本地权限规则快照 (Level 1 Cache)
@@ -101,7 +94,7 @@ public class DynamicAuthorizationManager implements AuthorizationManager<Request
             String ruleKey = entry.getKey();
 
             // 解析复合 Key: "POST:/system/user" -> method="POST", path="/system/user"
-            int splitIndex = ruleKey.indexOf(KEY_SEPARATOR);
+            int splitIndex = ruleKey.indexOf(AuthConstants.KEY_SEPARATOR);
             if (splitIndex == -1) continue;
 
             String ruleMethod = ruleKey.substring(0, splitIndex);
@@ -111,7 +104,7 @@ public class DynamicAuthorizationManager implements AuthorizationManager<Request
             // 1. 路径匹配 (使用 AntPathMatcher，支持 ** 通配符)
             // 2. 动词匹配 (规则为 ALL 或与请求 Method 完全一致)
             if (pathMatcher.match(rulePath, requestPath)) {
-                if (METHOD_ALL.equals(ruleMethod) || ruleMethod.equals(requestMethod)) {
+                if (AuthConstants.METHOD_ALL.equals(ruleMethod) || ruleMethod.equals(requestMethod)) {
                     neededPerm = entry.getValue();
                     break; // 贪婪匹配：命中即停止，不再继续查找
                 }
@@ -208,7 +201,7 @@ public class DynamicAuthorizationManager implements AuthorizationManager<Request
      * @return 格式化后的权限映射表 (Key format: METHOD:URL)
      */
     private Map<String, String> loadUrlPermRules(boolean forceDb) {
-        // 1. 如果不是强制刷新，且 Redis 有数据，直接返回
+        // 第一次检查 (Check 1): 无锁快速判断
         if (!forceDb) {
             Map<String, String> cachedMap = redisCache.getCacheMap(RedisConstants.SYS_AUTH_RULES_KEY);
             if (MapUtil.isNotEmpty(cachedMap)) {
@@ -216,34 +209,78 @@ public class DynamicAuthorizationManager implements AuthorizationManager<Request
             }
         }
 
-        // 2. 缓存击穿或强制刷新，查询数据库
-        List<SysMenu> menuList = sysMenuService.getMenuRules();
+        // 准备分布式锁
+        String lockKey = RedisConstants.LOCK_PREFIX + RedisConstants.SYS_AUTH_RULES_KEY;
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean isLocked = false;
 
-        // 3. 数据清洗与 Key 构造
-        Map<String, String> dbMap = new HashMap<>();
-        for (SysMenu menu : menuList) {
-            // 仅处理配置了 API 路径和 权限标识 的有效数据
-            if (StringUtils.hasText(menu.getApiPath()) && StringUtils.hasText(menu.getPerms())) {
+        try {
+            // 尝试获取锁 (Wait Time: 3s, Lease Time: 10s)
+            isLocked = lock.tryLock(RedisConstants.LOCK_WAIT_SECONDS, RedisConstants.LOCK_LEASE_SECONDS, TimeUnit.SECONDS);
 
-                // 处理 Request Method：若 DB 为空则视为 ALL
-                String method = StringUtils.hasText(menu.getRequestMethod())
-                        ? menu.getRequestMethod().toUpperCase()
-                        : METHOD_ALL;
+            if (isLocked) {
+                // 获取锁成功 -> 进入临界区
 
-                // 构造复合 Key: "GET:/system/user"
-                String key = method + KEY_SEPARATOR + menu.getApiPath();
+                // 第二次检查 (Check 2): 防止重复查询
+                // 场景：Thread A 和 B 同时发现缓存为空，A 拿锁查库回写缓存后释放，B 拿到锁应再次检查缓存，避免重复查库。
+                if (!forceDb) {
+                    Map<String, String> doubleCheckMap = redisCache.getCacheMap(RedisConstants.SYS_AUTH_RULES_KEY);
+                    if (MapUtil.isNotEmpty(doubleCheckMap)) {
+                        return doubleCheckMap;
+                    }
+                }
 
-                dbMap.put(key, menu.getPerms());
+                // --- 临界区开始：查询数据库 ---
+                log.info("缓存未命中或强制刷新，正在查询数据库...");
+                List<SysMenu> menuList = sysMenuService.getMenuRules();
+
+                // ETL 数据清洗
+                Map<String, String> dbMap = new HashMap<>();
+                for (SysMenu menu : menuList) {
+                    if (StringUtils.hasText(menu.getApiPath()) && StringUtils.hasText(menu.getPerms())) {
+                        String method = StringUtils.hasText(menu.getRequestMethod())
+                                ? menu.getRequestMethod().toUpperCase()
+                                : AuthConstants.METHOD_ALL;
+                        String key = method + AuthConstants.KEY_SEPARATOR + menu.getApiPath();
+                        dbMap.put(key, menu.getPerms());
+                    }
+                }
+
+                // 回写 Redis (设置 TTL 防止僵尸数据)
+                if (!dbMap.isEmpty()) {
+                    redisCache.executePipeline(ops -> {
+                        ops.delete(RedisConstants.SYS_AUTH_RULES_KEY);
+                        ops.opsForHash().putAll(RedisConstants.SYS_AUTH_RULES_KEY, dbMap);
+                        ops.expire(RedisConstants.SYS_AUTH_RULES_KEY, AuthConstants.AUTH_EXPIRATION, TimeUnit.HOURS);
+                    });
+                }
+                // --- 临界区结束 ---
+
+                return dbMap;
+
+            } else {
+                // 获取锁失败 (说明有其他节点正在查库)
+                log.warn("获取权限加载锁失败，正在等待其他节点构建缓存...");
+
+                // 稍微休眠，等待持有锁的线程完成缓存构建
+                Thread.sleep(RedisConstants.LOCK_FAILURE_SLEEP_MILLIS);
+
+                // 再次尝试读取(此时缓存应该已经有了)
+                return redisCache.getCacheMap(RedisConstants.SYS_AUTH_RULES_KEY);
+            }
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("权限刷新线程被中断", e);
+        } catch (Exception e) {
+            log.error("加载权限数据异常", e);
+            throw new RuntimeException("加载权限数据失败", e);
+        } finally {
+            // 释放锁 (只有持有锁的线程才能释放)
+            if (isLocked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
             }
         }
-
-        // 4. 重建缓存 (TTL: 24小时，防止缓存雪崩)
-        if (!dbMap.isEmpty()) {
-            redisCache.setCacheMap(RedisConstants.SYS_AUTH_RULES_KEY, dbMap);
-            redisCache.expire(RedisConstants.SYS_AUTH_RULES_KEY, AuthConstants.AUTH_EXPIRATION, TimeUnit.HOURS);
-        }
-
-        return dbMap;
     }
 
     /**
@@ -253,7 +290,7 @@ public class DynamicAuthorizationManager implements AuthorizationManager<Request
      * @return 提取出的 URL，如 "/user/add"
      */
     private String extractUrlFromKey(String key) {
-        int index = key.indexOf(KEY_SEPARATOR);
+        int index = key.indexOf(AuthConstants.KEY_SEPARATOR);
         if (index != -1) {
             return key.substring(index + 1);
         }

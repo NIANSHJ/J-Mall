@@ -1,5 +1,6 @@
 package com.nshj.mall.controller;
 
+import com.nshj.mall.annotation.Auditable;
 import com.nshj.mall.entity.SysMenu;
 import com.nshj.mall.response.Result;
 import com.nshj.mall.service.SysMenuService;
@@ -95,6 +96,7 @@ public class SysMenuController {
      */
     @Operation(summary = "新增菜单", description = "录入新的功能资源")
     @PostMapping
+    @Auditable(module = "菜单模块", action = "新增菜单")
     public Result<Void> add(@RequestBody SysMenu sysMenu) {
         sysMenuService.createMenu(sysMenu);
         return Result.success();
@@ -109,8 +111,9 @@ public class SysMenuController {
      * @param sysMenu 菜单实体 (ID 必填)
      * @return 空响应
      */
-    @Operation(summary = "修改菜单", description = "更新属性并自动触发权限刷新")
+    @Operation(summary = "修改菜单", description = "修改属性并自动触发权限刷新")
     @PutMapping
+    @Auditable(module = "菜单模块", action = "修改菜单")
     public Result<Void> edit(@RequestBody SysMenu sysMenu) {
         sysMenuService.updateMenu(sysMenu);
         return Result.success();
@@ -128,6 +131,7 @@ public class SysMenuController {
      */
     @Operation(summary = "删除菜单", description = "物理删除菜单记录，需满足无子节点约束")
     @DeleteMapping("/{menuIds}")
+    @Auditable(module = "菜单模块", action = "删除菜单")
     public Result<Void> remove(@PathVariable Long[] menuIds) {
         sysMenuService.removeMenuBatchByIds(Arrays.asList(menuIds));
         return Result.success();

@@ -13,6 +13,55 @@ package com.nshj.mall.constant;
 public class RedisConstants {
 
     /**
+     * 分布式锁前缀 (Distributed Lock Prefix)
+     * <p>
+     * <b>键结构：</b> {@code lock:{business_key}}
+     * <p>
+     * <b>业务场景：</b>
+     * 配合 Redisson 或 RedisTemplate 处理高并发下的竞态条件。
+     * 例如：秒杀库存扣减、定时任务防重执行、重复提交拦截。
+     */
+    public static final String LOCK_PREFIX = "lock:";
+
+    /**
+     * 分布式锁：获取锁最大等待时长 (Max Wait Time)
+     * <p>
+     * <b>单位：</b> 秒 (Seconds)
+     * <br>
+     * <b>策略：</b> 3秒 —— <b>Fail-Fast (快速失败)</b> 策略。
+     * <br>
+     * <b>设计意图：</b>
+     * 在高并发场景下，如果 3 秒内无法获得锁，说明资源竞争极其激烈。
+     * 此时应直接抛出异常或降级，而不是让线程无限期阻塞导致 Tomcat 线程池耗尽 (Thread Starvation)。
+     */
+    public static final int LOCK_WAIT_SECONDS = 3;
+
+    /**
+     * 分布式锁：锁自动释放时长 (Lease Time)
+     * <p>
+     * <b>单位：</b> 秒 (Seconds)
+     * <br>
+     * <b>策略：</b> 10秒 —— <b>Deadlock Prevention (死锁防御)</b>。
+     * <br>
+     * <b>设计意图：</b>
+     * 即使持有锁的服务实例发生宕机（无法主动释放锁），Redis 也会在 10 秒后强制删除该 Key，
+     * 确保系统能自动恢复，不会因为单点故障导致资源被永久锁定。
+     * <br><i>注意：如果业务逻辑执行时间可能超过 10s，需配合 Watchdog (看门狗) 机制自动续期。</i>
+     */
+    public static final int LOCK_LEASE_SECONDS = 10;
+
+    /**
+     * 分布式锁：重试/降级休眠时长
+     * <p>
+     * <b>单位：</b> 毫秒 (Milliseconds)
+     * <br>
+     * <b>业务场景：</b>
+     * 当获取锁失败需要自旋重试，或者触发降级逻辑前的短暂缓冲。
+     * 设置短暂的休眠可以避免 CPU 空转 (Spin Lock) 造成的资源浪费。
+     */
+    public static final int LOCK_FAILURE_SLEEP_MILLIS = 200;
+
+    /**
      * 用户登录会话缓存前缀
      * <p>
      * <b>键结构规范：</b> {@code user:token:{token_uuid}}

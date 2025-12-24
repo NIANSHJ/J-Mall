@@ -1,6 +1,7 @@
 package com.nshj.mall.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.nshj.mall.annotation.Auditable;
 import com.nshj.mall.entity.SysUser;
 import com.nshj.mall.model.security.LoginUser;
 import com.nshj.mall.model.vo.UserDetailVO;
@@ -100,6 +101,7 @@ public class SysUserController {
      */
     @Operation(summary = "新增用户", description = "创建新账号并分配初始角色")
     @PostMapping
+    @Auditable(module = "用户模块", action = "新增用户")
     public Result<Void> add(@RequestBody SysUser sysUser) {
         sysUserService.addUser(sysUser);
         return Result.success();
@@ -114,8 +116,9 @@ public class SysUserController {
      * @param sysUser 用户表单数据 (必须包含 ID)
      * @return 空响应
      */
-    @Operation(summary = "修改用户", description = "更新基础信息或角色。操作成功后将强制刷新该用户的权限缓存")
+    @Operation(summary = "修改用户", description = "修改基础信息或角色。操作成功后将强制刷新该用户的权限缓存")
     @PutMapping
+    @Auditable(module = "用户模块", action = "修改用户")
     public Result<Void> edit(@RequestBody SysUser sysUser) {
         sysUserService.updateUser(sysUser);
         return Result.success();
@@ -131,6 +134,7 @@ public class SysUserController {
      */
     @Operation(summary = "删除用户", description = "批量逻辑删除用户，并级联清理关联数据与 Token 缓存")
     @DeleteMapping("/{userIds}")
+    @Auditable(module = "用户模块", action = "删除用户")
     public Result<Void> remove(@PathVariable Long[] userIds) {
         sysUserService.removeUserBatchByIds(Arrays.asList(userIds));
         return Result.success();
@@ -147,6 +151,7 @@ public class SysUserController {
      */
     @Operation(summary = "重置密码", description = "管理员强制重置指定用户的登录密码")
     @PutMapping("/resetPwd")
+    @Auditable(module = "用户模块", action = "重置密码")
     public Result<Void> resetPwd(@RequestBody SysUser sysUser) {
         sysUserService.resetPwd(sysUser);
         return Result.success();
