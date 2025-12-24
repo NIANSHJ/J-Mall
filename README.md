@@ -1,1 +1,1 @@
-基于SpringBoot 3的电商后台管理系统
+基于SpringBoot 3的后台权限管理系统
